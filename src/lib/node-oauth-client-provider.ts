@@ -3,7 +3,7 @@ import { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js'
 import {
   OAuthClientInformation,
   OAuthClientInformationFull,
-  OAuthClientInformationSchema,
+  OAuthClientInformationFullSchema,
   OAuthTokens,
   OAuthTokensSchema,
 } from '@modelcontextprotocol/sdk/shared/auth.js'
@@ -58,8 +58,21 @@ export class NodeOAuthClientProvider implements OAuthClientProvider {
    * @returns The client information or undefined
    */
   async clientInformation(): Promise<OAuthClientInformation | undefined> {
-    // log('Reading client info')
-    return readJsonFile<OAuthClientInformation>(this.serverUrlHash, 'client_info.json', OAuthClientInformationSchema)
+    const clientInfo = await readJsonFile<OAuthClientInformationFull>(
+      this.serverUrlHash,
+      'client_info.json',
+      OAuthClientInformationFullSchema,
+    )
+    if (!clientInfo) {
+      return undefined
+    }
+
+    if ('redirect_uris' in clientInfo && Array.isArray(clientInfo.redirect_uris) && !clientInfo.redirect_uris.includes(this.redirectUrl)) {
+      log('Client information exists, but redirect_uri does not match. Client info will be ignored')
+      return undefined
+    }
+
+    return clientInfo
   }
 
   /**
